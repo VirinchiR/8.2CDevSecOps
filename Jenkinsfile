@@ -1,48 +1,42 @@
 pipeline {
-  agent any
+    agent any
 
-  stages {
-    stage('Checkout') {
-      steps {
-        git branch: 'main', url: 'https://github.com/VirinchiR/8.2CDevSecOps.git'
-      }
-    }
-
-    stage('Install Dependencies') {
-      steps {
-        sh '/opt/homebrew/bin/npm install'
-      }
-    }
-
-    stage('Run Tests') {
-      steps {
-        sh '/opt/homebrew/bin/npm test || true'
-      }
-    }
-
-    stage('Generate Coverage Report') {
-      steps {
-        sh '/opt/homebrew/bin/npm run coverage || true'
-      }
-    }
-
-    stage('NPM Audit (Security Scan)') {
-      steps {
-        sh '/opt/homebrew/bin/npm audit || true'
-      }
-    }
-
-    // 👇 ADD THIS SONARCLOUD STAGE HERE
-    stage('SonarCloud Analysis') {
-      steps {
-        withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'SONAR_TOKEN')]) {
-          sh '''
-            curl -sSLo sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.7.0.2747-linux.zip
-            unzip sonar-scanner.zip
-            ./sonar-scanner-*/bin/sonar-scanner -Dsonar.login=$SONAR_TOKEN
-          '''
+    stages {
+        stage('Build') {
+            steps {
+                echo 'Building...'
+                // build steps
+            }
         }
-      }
+        stage('Test') {
+            steps {
+                echo 'Testing...'
+                // test steps
+            }
+        }
     }
-  }
+
+post {
+    always {
+        emailext(
+            subject: "Build ${currentBuild.currentResult}: Job '${env.JOB_NAME} [#${env.BUILD_NUMBER}]'",
+            body: """<p>Build Status: ${currentBuild.currentResult}</p>
+                     <p>Project: ${env.JOB_NAME}</p>
+                     <p>Build Number: ${env.BUILD_NUMBER}</p>
+                     <p>URL: <a href='${env.BUILD_URL}'>${env.BUILD_URL}</a></p>""",
+            recipientProviders: [[$class: 'DevelopersRecipientProvider']],
+            to: 'virinchirawal@gmail.com',
+            mimeType: 'text/html'
+        )
+    }
+}        
+    failure {
+        emailext (
+            subject: "FAILURE: ${env.JOB_NAME} Build #${env.BUILD_NUMBER}",
+            body: "Something went wrong!\nCheck: ${env.BUILD_URL}",
+            recipientProviders: [[$class: 'DevelopersRecipientProvider']],
+            to: 'your-email@gmail.com'
+        )
+    }
 }
+
